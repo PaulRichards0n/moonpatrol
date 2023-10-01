@@ -1,0 +1,103 @@
+import pygame
+import random
+
+# Initialize Pygame
+pygame.init()
+
+# Constants
+SCREEN_WIDTH, SCREEN_HEIGHT = 800, 600
+UFO_HEIGHT, UFO_WIDTH = 50, 50
+ROCK_HEIGHT, ROCK_WIDTH = 50, 50
+GROUND_HEIGHT = 10
+GROUND_COLOR = (128, 128, 128)  # Grey
+WHITE = (255, 255, 255)
+
+# Initialize screen and clock
+screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+pygame.display.set_caption('UFO Jump')
+clock = pygame.time.Clock()
+
+# Load images
+ufo_img = pygame.image.load('ufo.png')  # Replace with your own UFO image
+ufo_img = pygame.transform.scale(ufo_img, (UFO_WIDTH, UFO_HEIGHT))
+rock_img = pygame.image.load('rock.png')  # Replace with your own rock image
+rock_img = pygame.transform.scale(rock_img, (ROCK_WIDTH, ROCK_HEIGHT))
+explosion_img = pygame.image.load('explosion.png')  # Replace with your own explosion image
+explosion_img = pygame.transform.scale(explosion_img, (UFO_WIDTH, UFO_HEIGHT))
+
+# Initialize variables
+ufo_x, ufo_y = 50, SCREEN_HEIGHT - UFO_HEIGHT - GROUND_HEIGHT
+rock_x, rock_y = SCREEN_WIDTH, SCREEN_HEIGHT - ROCK_HEIGHT - 5  # Closer to the ground
+speed = 5
+jump = False
+jump_height = 10
+jump_count = 15  # Increased for a higher jump
+
+# Initialize variables for timer
+font = pygame.font.Font(None, 36)
+start_ticks = pygame.time.get_ticks()
+
+# Main game loop
+run = True
+while run:
+    clock.tick(30)
+    screen.fill(WHITE)
+    
+    # Draw hills in the background
+    pygame.draw.ellipse(screen, (0, 128, 0), (0, 400, 300, 100))  # Hill 1
+    pygame.draw.ellipse(screen, (0, 128, 0), (200, 420, 400, 150))  # Hill 2
+    pygame.draw.ellipse(screen, (0, 128, 0), (500, 390, 350, 120))  # Hill 3
+    
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            run = False
+    
+    keys = pygame.key.get_pressed()
+    
+    if keys[pygame.K_a]:
+        ufo_x -= 5  # Move left
+    if keys[pygame.K_d]:
+        ufo_x += 5  # Move right
+    
+    if keys[pygame.K_SPACE]:
+        jump = True
+    
+    if jump:
+        if jump_count >= -15:  # Increased for a higher jump
+            ufo_y -= (jump_count * abs(jump_count)) * 0.3  # Changed for a less steep jump
+            jump_count -= 1
+        else:
+            jump = False
+            jump_count = 15  # Reset to initial value
+    
+    rock_x -= speed
+    if rock_x < -ROCK_WIDTH:
+        rock_x = SCREEN_WIDTH
+        rock_y = SCREEN_HEIGHT - ROCK_HEIGHT - 5  # Reset closer to the ground
+    
+    # Collision detection
+    ufo_rect = pygame.Rect(ufo_x, ufo_y, UFO_WIDTH, UFO_HEIGHT)
+    rock_rect = pygame.Rect(rock_x, rock_y, ROCK_WIDTH, ROCK_HEIGHT)
+    
+    if ufo_rect.colliderect(rock_rect):
+        screen.blit(explosion_img, (ufo_x, ufo_y))
+        pygame.display.update()
+        pygame.time.delay(1000)  # Delay to show explosion for 1 second
+
+        # Reset UFO and rock positions
+        ufo_x, ufo_y = 50, SCREEN_HEIGHT - UFO_HEIGHT - GROUND_HEIGHT
+        rock_x, rock_y = SCREEN_WIDTH, SCREEN_HEIGHT - ROCK_HEIGHT - 5  # Reset closer to the ground
+    
+    # Calculate timer
+    seconds = (pygame.time.get_ticks() - start_ticks) // 1000
+    timer_text = font.render(f"Time: {seconds}", True, (0, 0, 0))
+    
+    # Draw ground, UFO, rock, and timer
+    pygame.draw.rect(screen, GROUND_COLOR, (0, SCREEN_HEIGHT - GROUND_HEIGHT, SCREEN_WIDTH, GROUND_HEIGHT))
+    screen.blit(ufo_img, (ufo_x, ufo_y))
+    screen.blit(rock_img, (rock_x, rock_y))
+    screen.blit(timer_text, (10, 10))
+    
+    pygame.display.update()
+
+pygame.quit()
