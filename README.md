@@ -1,6 +1,8 @@
 # moonpatrol
 
-Commodore Moon Patrol
+Tring my version of Moon Patrol
+
+
 The code is a simple Pygame script for a game called "UFO Jump". Here's a breakdown of its main components:
 
 Initialization
