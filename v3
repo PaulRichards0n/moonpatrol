@@ -1,0 +1,165 @@
+import pygame
+import random
+
+# Initialize Pygame and the mixer
+pygame.init()
+pygame.mixer.init()
+
+# Constants
+SCREEN_WIDTH, SCREEN_HEIGHT = 1300, 600
+UFO_HEIGHT, UFO_WIDTH = 200, 200
+LETTER_WIDTH, LETTER_HEIGHT = 30, 30
+ROCK_HEIGHT, ROCK_WIDTH = 80, 80
+BULLET_WIDTH, BULLET_HEIGHT = 10, 10
+GROUND_HEIGHT = 30
+GROUND_COLOR = (190, 195, 125, 89)  # Grey
+
+# Initialize screen and clock
+screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+pygame.display.set_caption('UFO Jump')
+clock = pygame.time.Clock()
+
+# Load images
+ufo_img = pygame.image.load('ufo.png')
+ufo_img = pygame.transform.scale(ufo_img, (UFO_WIDTH, UFO_HEIGHT))
+rock_img = pygame.image.load('rock.png')
+rock_img = pygame.transform.scale(rock_img, (ROCK_WIDTH, ROCK_HEIGHT))
+explosion_img = pygame.image.load('explosion.png')
+explosion_img = pygame.transform.scale(explosion_img, (UFO_WIDTH, UFO_HEIGHT))
+bg_img = pygame.image.load('bk.jpg')
+bg_img = pygame.transform.scale(bg_img, (SCREEN_WIDTH, SCREEN_HEIGHT))
+
+# Load sound
+bullet_sound = pygame.mixer.Sound('laser.mp3')
+
+# Initialize variables
+ufo_x, ufo_y = 40, SCREEN_HEIGHT - UFO_HEIGHT - GROUND_HEIGHT + 15
+rock_x, rock_y = SCREEN_WIDTH, SCREEN_HEIGHT - ROCK_HEIGHT + 15
+speed = 5
+jump = False
+jump_count = 15
+bullets = []
+letters = []
+collected_letters = ""
+high_score = 0
+
+# Initialize variables for timer and ASCII dust animation
+font = pygame.font.Font(None, 36)
+dust_font = pygame.font.Font(None, 24)  # Font for ASCII dust
+start_ticks = pygame.time.get_ticks()
+dust_animation = ['~', '^', '*', '+']
+dust_index = 0  # To cycle through dust_animation
+
+# Main game loop
+run = True
+while run:
+    clock.tick(30)
+    screen.blit(bg_img, (0, 0))
+
+    # Timer
+    seconds = (pygame.time.get_ticks() - start_ticks) // 1000
+
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            run = False
+
+    keys = pygame.key.get_pressed()
+
+    if keys[pygame.K_a]:
+        ufo_x = max(0, ufo_x - 5)
+    if keys[pygame.K_d]:
+        ufo_x = min(SCREEN_WIDTH - UFO_WIDTH, ufo_x + 5)
+
+    if keys[pygame.K_w]:
+        jump = True
+
+    if keys[pygame.K_f]:
+        bullet = pygame.Rect(ufo_x + UFO_WIDTH, ufo_y + UFO_HEIGHT // 2, BULLET_WIDTH, BULLET_HEIGHT)
+        bullets.append(bullet)
+        bullet_sound.play()
+
+    if jump:
+        if jump_count >= -15:
+            ufo_y -= (jump_count * abs(jump_count)) * 0.3
+            jump_count -= 1
+        else:
+            jump = False
+            jump_count = 15
+
+    rock_x -= speed
+    if rock_x < -ROCK_WIDTH:
+        rock_x = SCREEN_WIDTH
+        rock_y = SCREEN_HEIGHT - ROCK_HEIGHT + 15
+
+    # Generate random letters
+    if random.randint(0, 50) == 0:
+        letter = {'rect': pygame.Rect(SCREEN_WIDTH, random.randint(50, SCREEN_HEIGHT - GROUND_HEIGHT - LETTER_HEIGHT), LETTER_WIDTH, LETTER_HEIGHT), 'char': random.choice('ABCDEFGHIJKLMNOPQRSTUVWXYZ')}
+        letters.append(letter)
+
+    # Update letters
+    new_letters = []
+    for letter in letters:
+        letter['rect'].x -= 5
+        if letter['rect'].x < -LETTER_WIDTH:
+            continue
+        new_letters.append(letter)
+    letters = new_letters
+
+    # Update bullets
+    new_bullets = []
+    for bullet in bullets:
+        bullet.x += 10
+        if bullet.x > SCREEN_WIDTH:
+            continue
+        new_bullets.append(bullet)
+    bullets = new_bullets
+
+    # Check collision
+    ufo_rect = pygame.Rect(ufo_x, ufo_y, UFO_WIDTH, UFO_HEIGHT)
+    rock_rect = pygame.Rect(rock_x, rock_y, ROCK_WIDTH, ROCK_HEIGHT)
+
+    if ufo_rect.colliderect(rock_rect):
+        screen.blit(explosion_img, (ufo_x, ufo_y))
+        pygame.display.update()
+        pygame.time.delay(1000)
+        ufo_x, ufo_y = 40, SCREEN_HEIGHT - UFO_HEIGHT - GROUND_HEIGHT + 15
+        rock_x, rock_y = SCREEN_WIDTH, SCREEN_HEIGHT - ROCK_HEIGHT + 15
+        start_ticks = pygame.time.get_ticks()  # Reset timer
+        if seconds > high_score:
+            high_score = seconds  # Update high score
+
+    # Check collision with letters
+    for letter in letters:
+        if ufo_rect.colliderect(letter['rect']):
+            collected_letters += letter['char']
+            letters.remove(letter)
+
+    # Draw everything
+    pygame.draw.rect(screen, GROUND_COLOR, (0, SCREEN_HEIGHT - GROUND_HEIGHT, SCREEN_WIDTH, GROUND_HEIGHT))
+    screen.blit(ufo_img, (ufo_x, ufo_y))
+    screen.blit(rock_img, (rock_x, rock_y))
+
+    # Animate ASCII art for dust
+    dust_char = dust_animation[dust_index % len(dust_animation)]
+    dust = dust_font.render(dust_char, True, (255, 255, 255))
+    screen.blit(dust, (ufo_x + 10, ufo_y + UFO_HEIGHT))
+    screen.blit(dust, (ufo_x + UFO_WIDTH - 20, ufo_y + UFO_HEIGHT))
+    dust_index += 1  # Increment index for the next cycle
+
+    for bullet in bullets:
+        pygame.draw.rect(screen, (255, 0, 0), bullet)
+    for letter in letters:
+        letter_surface = font.render(letter['char'], True, (255, 255, 255))
+        screen.blit(letter_surface, letter['rect'].topleft)
+
+    # Draw collected letters and timer
+    collected_surface = font.render(collected_letters, True, (255, 255, 255))
+    screen.blit(collected_surface, (SCREEN_WIDTH - 100, 10))
+    timer_surface = font.render(f"Time: {seconds}s", True, (255, 255, 255))
+    screen.blit(timer_surface, (10, 10))
+    high_score_surface = font.render(f"High Score: {high_score}s", True, (255, 255, 255))
+    screen.blit(high_score_surface, (10, 40))
+
+    pygame.display.update()
+
+pygame.quit()
